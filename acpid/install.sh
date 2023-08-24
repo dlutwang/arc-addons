@@ -3,11 +3,10 @@
 if [ "${1}" = "late" ]; then
   echo "Installing daemon for ACPI button"
   mkdir -p /tmpRoot/etc/acpi/events/
-  cp -v /etc/acpi/events/power /tmpRoot/etc/acpi/events/power
-  cp -v /usr/sbin/acpid /tmpRoot/usr/sbin/acpid
-  cp -v /etc/acpi/power.sh /tmpRoot/etc/acpi/power.sh
-
-  DEST=/tmpRoot/usr/lib/systemd/system/acpid.service
+  cp -vf /etc/acpi/events/power /tmpRoot/etc/acpi/events/power
+  cp -vf /usr/sbin/acpid /tmpRoot/usr/sbin/acpid
+  cp -vf /etc/acpi/power.sh /tmpRoot/etc/acpi/power.sh
+  DEST=/tmpRoot/lib/systemd/system/acpid.service
   echo "[Unit]"                               >${DEST}
   echo "Description=ACPI Daemon"             >>${DEST}
   echo "DefaultDependencies=no"              >>${DEST}
@@ -24,5 +23,5 @@ if [ "${1}" = "late" ]; then
   echo "Author=Virtualization Team"          >>${DEST}
 
   mkdir -vp /tmpRoot/lib/systemd/system/multi-user.target.wants
-  ln -vsf /usr/lib/systemd/system/acpid.service /tmpRoot/lib/systemd/system/multi-user.target.wants/acpid.service
+  ln -vsf /lib/systemd/system/acpid.service /tmpRoot/lib/systemd/system/multi-user.target.wants/acpid.service
 fi

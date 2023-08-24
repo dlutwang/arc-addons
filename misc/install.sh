@@ -1,17 +1,16 @@
 #!/usr/bin/env ash
 
-SED_PATH='/tmpRoot/usr/bin/sed'
-XXD_PATH='/tmpRoot/usr/bin/xxd'
-LSPCI_PATH='/tmpRoot/usr/bin/lspci'
-
 if [ "${1}" = "late" ]; then
   echo "Script for fixing missing HW features dependencies and another functions"
 
+  SED_PATH='/tmpRoot/usr/bin/sed'
+  XXD_PATH='/tmpRoot/usr/bin/xxd'
+  LSPCI_PATH='/tmpRoot/usr/bin/lspci'
+
   # Copy utilities to dsm partition
-  cp -vf /usr/bin/arpl-reboot.sh /tmpRoot/usr/bin
-  cp -vf /usr/bin/arc-reboot.sh /tmpRoot/usr/bin
-  cp -vf /usr/bin/grub-editenv /tmpRoot/usr/bin
-  cp -vf /usr/bin/i915ids /tmpRoot/usr/bin
+  cp -vf "/usr/sbin/arpl-reboot.sh" "/tmpRoot/usr/sbin/arpl-reboot.sh"
+  cp -vf "/usr/sbin/arc-reboot.sh" "/tmpRoot/usr/sbin/arc-reboot.sh"
+  cp -vf "/usr/sbin/grub-editenv" "/tmpRoot/usr/sbin/grub-editenv"
 
   mount -t sysfs sysfs /sys
   modprobe acpi-cpufreq
@@ -24,7 +23,7 @@ if [ "${1}" = "late" ]; then
     else
       echo "CPU supports CPU Performance Scaling, enabling"
       ${SED_PATH} -i 's/^# acpi-cpufreq/acpi-cpufreq/g' /tmpRoot/usr/lib/modules-load.d/70-cpufreq-kernel.conf
-      cp -vf /usr/lib/modules/cpufreq_* /tmpRoot/usr/lib/modules/
+      cp -vf "/usr/lib/modules/cpufreq_*" "/tmpRoot/usr/lib/modules/"
     fi
   fi
   umount /sys
@@ -49,39 +48,6 @@ if [ "${1}" = "late" ]; then
       echo "CPU does NOT support AES, aesni-intel will not load, disabling"
       ${SED_PATH} -i 's/support_aesni_intel="yes"/support_aesni_intel="no"/' /tmpRoot/etc.defaults/synoinfo.conf
       ${SED_PATH} -i 's/^aesni-intel/# aesni-intel/g' /tmpRoot/usr/lib/modules-load.d/70-crypto-kernel.conf
-    fi
-  fi
-
-  # Intel GPU
-  if [ -f /tmpRoot/usr/lib/modules-load.d/70-video-kernel.conf ] && [ -f /tmpRoot/usr/lib/modules/i915.ko ]; then
-    export LD_LIBRARY_PATH=/tmpRoot/usr/bin:/tmpRoot/usr/lib:${LD_LIBRARY_PATH}
-    GPU="$(${LSPCI_PATH} -n | grep 0300 | grep 8086 | cut -d " " -f 3 | ${SED_PATH} -e 's/://g')"
-    echo "${GPU}" >/tmpRoot/root/i915.GPU
-    if [ -n "${GPU}" ] && [ $(echo -n "${GPU}" | wc -c) -eq 8 ]; then
-      if [ $(grep -i ${GPU} /usr/bin/i915ids | wc -l) -eq 0 ]; then
-        echo "Intel GPU is not detected (${GPU}), nothing to do"
-        #${SED_PATH} -i 's/^i915/# i915/g' /tmpRoot/usr/lib/modules-load.d/70-video-kernel.conf
-      else
-        GPU_DEF="86800000923e0000"
-        GPU_BIN="${GPU:2:2}${GPU:0:2}0000${GPU:6:2}${GPU:4:2}0000"
-        KO_SIZE="$(${XXD_PATH} -p /tmpRoot/usr/lib/modules/i915.ko | wc -c)"
-        ${XXD_PATH} -c ${KO_SIZE} -p /tmpRoot/usr/lib/modules/i915.ko /tmpRoot/root/i915.ko.hex
-        if [ $(grep -i "${GPU_BIN}" /tmpRoot/root/i915.ko.hex | wc -l) -gt 0 ]; then
-          echo "Intel GPU is detected (${GPU}), already support"
-        else
-          echo "Intel GPU is detected (${GPU}), replace id"
-          if [ ! -f /tmpRoot/usr/lib/modules/i915.ko.bak ]; then
-            cp -f /tmpRoot/usr/lib/modules/i915.ko /tmpRoot/usr/lib/modules/i915.ko.bak
-          fi
-          ${SED_PATH} -i "s/${GPU_DEF}/${GPU_BIN}/; s/308201f706092a86.*70656e6465647e0a//" /tmpRoot/root/i915.ko.hex
-          if [ -n "$(cat /tmpRoot/root/i915.ko.hex)" ]; then
-            ${XXD_PATH} -r -p /tmpRoot/root/i915.ko.hex > /tmpRoot/usr/lib/modules/i915.ko
-            rm -f /tmpRoot/root/i915.ko.hex
-          else
-            echo "Intel GPU is detected (${GPU}), replace i915.ko error"
-          fi
-        fi
-      fi
     fi
   fi
 
