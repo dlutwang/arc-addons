@@ -2,15 +2,9 @@
 
 if [ "${1}" = "late" ]; then
   echo "Script for fixing missing HW features dependencies and another functions"
-
   SED_PATH='/tmpRoot/usr/bin/sed'
   XXD_PATH='/tmpRoot/usr/bin/xxd'
   LSPCI_PATH='/tmpRoot/usr/bin/lspci'
-
-  # Copy utilities to dsm partition
-  cp -vf "/usr/sbin/arpl-reboot.sh" "/tmpRoot/usr/sbin/arpl-reboot.sh"
-  cp -vf "/usr/sbin/arc-reboot.sh" "/tmpRoot/usr/sbin/arc-reboot.sh"
-  cp -vf "/usr/sbin/grub-editenv" "/tmpRoot/usr/sbin/grub-editenv"
 
   mount -t sysfs sysfs /sys
   modprobe acpi-cpufreq
@@ -62,4 +56,19 @@ if [ "${1}" = "late" ]; then
       echo "NVIDIA GPU is detected, nothing to do"
     fi
   fi
+
+  # Open-VM-Tools-Fix
+  if [ -d /tmpRoot/var/packages/open-vm-tools ]; then
+    ${SED_PATH} -i 's/package/root/g' /tmpRoot/var/packages/open-vm-tools/conf/privilege
+  fi
+  if [ -d /var/packages/open-vm-tools ]; then
+    ${SED_PATH} -i 's/package/root/g' /var/packages/open-vm-tools/conf/privilege
+  fi
+
+  # network
+  for I in `seq 0 7`; do
+    if [ -f "/etc/sysconfig/network-scripts/ifcfg-eth${I}" ] && [ ! -f "/tmpRoot/etc.defaults/sysconfig/network-scripts/ifcfg-eth${I}" ]; then
+      cp -vf "/etc/sysconfig/network-scripts/ifcfg-eth${I}" "/tmpRoot/etc.defaults/sysconfig/network-scripts/ifcfg-eth${I}"
+    fi
+  done
 fi
